@@ -1,0 +1,55 @@
+DEFINE_UI_PARAMS(slider_colours, Colours, DCTLUI_SLIDER_INT, 2, 2, 256, 1)
+DEFINE_UI_PARAMS(slider_bayer_level, Bayer level, DCTLUI_SLIDER_INT, 0, 0, 2, 1)
+
+__DEVICE__ float get_luma(float r, float g, float b)
+{
+    float luma = 0.2126f * r + 0.7152 * g + 0.0722f * b;
+    return luma;
+}
+
+__DEVICE__ float get_palette_value(int step, int colours)
+{
+    float out = 1.0f * step / (colours - 1);
+    return out;
+}
+
+__DEVICE__ float get_bayer_bias(int bayer_level, int X, int Y)
+{
+    if (bayer_level == 0) {
+        float matrix_average = 0.375f;
+        int matrix_dim = 2;
+        float matrix[4] = {0.0f, 0.5f, 0.75f, 0.25f};
+        int position = X % matrix_dim + (Y % matrix_dim) * matrix_dim;
+        return matrix[position] - matrix_average;
+    } else if (bayer_level == 1) {
+        float matrix_average = 0.46875f;
+        int matrix_dim = 4;
+        float matrix[16] = {0.0f, 0.5f, 0.125f, 0.625f, 0.75f, 0.25f, 0.875f, 0.375f, 0.1875f, 0.6875f, 0.0625f, 0.5625f, 0.9375f, 0.4375f, 0.8125f, 0.3125f};
+        int position = X % matrix_dim + (Y % matrix_dim) * matrix_dim;
+        return matrix[position] - matrix_average;
+    } else if (bayer_level == 2) {
+        float matrix_average = 0.5f;
+        int matrix_dim = 8;
+        float matrix[64] = {0.0f, 0.5f, 0.125f, 0.625f, 0.03125f, 0.53125f, 0.15625f, 0.65625f, 0.75f, 0.25f, 0.875f, 0.375f, 0.78125f, 0.28125f, 0.90625f, 0.40625f, 0.1875f, 0.6875f, 0.0625f, 0.5625f, 0.21875f, 0.71875f, 0.09375f, 0.59375f, 0.9375f, 0.4375f, 0.8125f, 0.3125f, 0.96875f, 0.46875f, 0.84375f, 0.34375f, 0.046875f, 0.546875f, 0.171875f, 0.671875f, 0.015625f, 0.515625f, 0.140625f, 0.640625f, 0.796875f, 0.296875f, 0.921875f, 0.421875f, 0.765625f, 0.265625f, 0.890625f, 0.390625f, 0.234375f, 0.734375f, 0.109375f, 0.609375f, 0.203125f, 0.703125f, 0.078125f, 0.578125f, 0.984375f, 0.484375f, 0.859375f, 0.359375f, 0.953125f, 0.453125f, 0.828125f, 0.328125};
+        int position = X % matrix_dim + (Y % matrix_dim) * matrix_dim;
+        return matrix[position] - matrix_average;
+    }
+}
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float luma = get_luma(p_R, p_G, p_B);
+    float out;
+    float dist = 1.0f;
+    float bayer_bias = get_bayer_bias(slider_bayer_level, p_X, p_Y);
+
+    for (int i = 0; i < slider_colours; i++) {
+        float current_value = get_palette_value(i, slider_colours);
+        float dist_step = _fabs(luma + bayer_bias - current_value);
+        if (dist_step < dist) {
+            dist = dist_step;
+            out = current_value;
+        } 
+    }
+    return make_float3(out, out, out);
+}
