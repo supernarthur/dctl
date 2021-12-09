@@ -1,0 +1,30 @@
+DEFINE_UI_PARAMS(line_thick, Line thickness, DCTLUI_SLIDER_FLOAT, 2.0, 1.0, 10.0, 0.1)
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+  float curve_level = 0.75f;
+  float out_R = p_R;
+  float out_G = p_G;
+  float out_B = p_B;
+  int YY = abs(p_Height - p_Y);
+  float epsilon = line_thick / (float)p_Height;
+  float Y_float = (float)YY / (float)p_Height;
+  float R_distance = abs(p_R - Y_float);
+  float G_distance = abs(p_G - Y_float);
+  float B_distance = abs(p_B - Y_float);
+  if (R_distance <= epsilon || G_distance <= epsilon || B_distance <= epsilon) {
+    out_R = 0.0f;
+    out_G = 0.0f;
+    out_B = 0.0f;
+      if (R_distance <= epsilon) {
+        out_R = curve_level;
+      }
+      if (G_distance <= epsilon) {
+        out_G = curve_level;
+      }
+      if (B_distance <= epsilon) {
+        out_B = curve_level;
+      }
+  }
+  return make_float3(out_R, out_G, out_B);
+}
